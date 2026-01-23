@@ -1,15 +1,7 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/latency.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/latency.py": {
+      "runtime": "python3.10"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/latency",
-      "dest": "api/latency.py"
-    }
-  ]
+  }
 }
