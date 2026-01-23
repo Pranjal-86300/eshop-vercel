@@ -24,7 +24,7 @@ DATA_PATH = os.path.join(
     "q-vercel-latency.json"
 )
 
-@app.post("/latency")
+@app.post("/")
 def latency(payload: Payload):
     with open(DATA_PATH) as f:
         data = json.load(f)
