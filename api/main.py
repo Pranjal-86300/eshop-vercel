@@ -24,17 +24,11 @@ DATA_PATH = os.path.join(
     "q-vercel-latency.json"
 )
 
-@app.get("/")
-def health():
-    return {"status": "ok"}
-
-@app.post("/")
-def latency(payload: Payload):
+def compute(payload: Payload):
     with open(DATA_PATH) as f:
         data = json.load(f)
 
     result = {}
-
     for region in payload.regions:
         rows = [r for r in data if r["region"] == region]
 
@@ -49,3 +43,19 @@ def latency(payload: Payload):
         }
 
     return result
+
+# health check (GET /api)
+@app.get("/")
+def health():
+    return {"ok": True}
+
+# ✅ REQUIRED BY THE TASK
+# POST /api/latency
+@app.post("/latency")
+def latency(payload: Payload):
+    return compute(payload)
+
+# optional: also allow POST /api
+@app.post("/")
+def latency_root(payload: Payload):
+    return compute(payload)
