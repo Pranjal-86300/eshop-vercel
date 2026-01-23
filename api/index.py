@@ -10,7 +10,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -24,7 +24,11 @@ DATA_PATH = os.path.join(
     "q-vercel-latency.json"
 )
 
-@app.post("/")
+@app.get("/")
+def health():
+    return {"status": "ok"}
+
+@app.post("/latency")
 def latency(payload: Payload):
     with open(DATA_PATH) as f:
         data = json.load(f)
