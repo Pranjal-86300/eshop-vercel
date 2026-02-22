@@ -1,52 +1,50 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import json
 import numpy as np
 import os
 
 app = FastAPI()
 
+# Enable CORS for POST from any origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["*"],
+    allow_methods=["POST"],
     allow_headers=["*"],
 )
 
-class Payload(BaseModel):
-    regions: list[str]
-    threshold_ms: float
+DATA_FILE = os.path.join(os.path.dirname(__file__), "../q-vercel-latency.json")
 
-DATA_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "q-vercel-latency.json"
-)
 
-def compute(payload: Payload):
-    with open(DATA_PATH) as f:
-        data = json.load(f)
+def load_data():
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-    out = {}
-    for region in payload.regions:
-        rows = [r for r in data if r["region"] == region]
-        lat = np.array([r["latency_ms"] for r in rows])
-        up = np.array([r["uptime_pct"] for r in rows])
 
-        out[region] = {
-            "avg_latency": float(lat.mean()),
-            "p95_latency": float(np.percentile(lat, 95)),
-            "avg_uptime": float(up.mean()),
-            "breaches": int((lat > payload.threshold_ms).sum())
+@app.post("/api")
+async def latency_metrics(request: Request):
+    body = await request.json()
+    regions = body.get("regions", [])
+    threshold = body.get("threshold_ms", 0)
+
+    data = load_data()
+    result = {}
+
+    for region in regions:
+        records = [r for r in data if r["region"] == region]
+
+        if not records:
+            continue
+
+        latencies = [r["latency_ms"] for r in records]
+        uptimes = [r["uptime_pct"] for r in records]
+
+        result[region] = {
+            "avg_latency": float(np.mean(latencies)),
+            "p95_latency": float(np.percentile(latencies, 95)),
+            "avg_uptime": float(np.mean(uptimes)),
+            "breaches": sum(1 for l in latencies if l > threshold),
         }
-    return out
 
-# 👇 THIS is why the checker stops failing
-@app.get("/")
-def ok():
-    return {"ok": True}
-
-@app.post("/")
-def latency(payload: Payload):
-    return compute(payload)
+    return result
